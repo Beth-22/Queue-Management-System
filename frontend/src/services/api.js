@@ -17,5 +17,8 @@ API.interceptors.request.use((req) => {
 // User services
 export const registerUser = (userData) => API.post("/users/register", userData);
 export const loginUser = (userData) => API.post("/users/login", userData);
-export const fetchDashboardData = () => API.get("/dashboard");
+export const fetchUserProfile = () => API.get("/users/profile"); // ✅ Fetch user profile
 export default API;
+
+
+

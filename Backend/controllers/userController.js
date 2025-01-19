@@ -1,55 +1,81 @@
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import validateInputs from '../utils/validateInputs.js';
+import bcrypt from 'bcryptjs';
 
-// Register a new user
 export const registerUser = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, isAdmin, adminCode } = req.body;
 
     try {
-        validateInputs(req.body, ['name', 'email', 'password']);
-
         const userExists = await User.findOne({ email });
         if (userExists) {
-            return res.status(400).json({ error: 'User already exists' });
+            return res.status(400).json({ error: "User already exists" });
         }
 
-        const user = await User.create({ name, email, password });
+        // Hash password before saving
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // ✅ Verify Admin Code
+        const adminStatus = isAdmin && adminCode === process.env.ADMIN_SECRET;
+
+        // Create new user
+        const user = await User.create({
+            name,
+            email,
+            password: hashedPassword,
+            isAdmin: adminStatus, // Only true if correct Admin Code is provided
+        });
+
         const token = generateToken(user._id);
 
-        res.status(201).json({ token, user: { name, email } });
+        res.status(201).json({
+            token,
+            isAdmin: user.isAdmin, // ✅ Return admin status in response
+            message: "User registered successfully."
+        });
+
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
 };
 
-// User login
+
 export const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        validateInputs(req.body, ['email', 'password']);
-
         const user = await User.findOne({ email });
-        if (!user || !(await user.matchPassword(password))) {
-            return res.status(401).json({ error: 'Invalid email or password' });
+        if (!user) {
+            return res.status(401).json({ error: "Invalid email or password." });
         }
 
-        const token = generateToken(user._id);
-        res.json({ token, user: { name: user.name, email: user.email } });
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ error: "Invalid email or password." });
+        }
+
+        const token = generateToken(user._id, user.isAdmin); // Include isAdmin in JWT
+        res.json({
+            token,
+            isAdmin: user.isAdmin, // Ensure frontend receives this
+            user: { name: user.name, email: user.email, isAdmin: user.isAdmin }
+        });
+
     } catch (error) {
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: "Server error" });
     }
 };
 
 // Get user profile
 export const getUserProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
-        if (!user) return res.status(404).json({ error: 'User not found' });
+        const user = await User.findById(req.user.id).select("-password"); // Exclude password
+        if (!user) return res.status(404).json({ error: "User not found" });
 
-        res.json(user);
+        res.json(user); // ✅ Return full user data (including `isAdmin`)
     } catch (error) {
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: "Server error" });
     }
 };
+

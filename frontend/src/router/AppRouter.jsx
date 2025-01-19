@@ -1,37 +1,62 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import HomePage from '../pages/HomePage';
-import LoginPage from '../pages/LoginPage';
-import RegisterPage from '../pages/RegisterPage';
-import Dashboard from '../pages/Dashboard';
-import NotFoundPage from '../pages/NotFoundPage';
-import ProtectedRoute from './ProtectedRoute';
+import React, { useEffect, useState } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import Home from "../pages/HomePage";
+import LoginPage from "../pages/LoginPage";
+import RegisterPage from "../pages/RegisterPage";
+import AdminDashboard from "../pages/AdminDashboard";
+import CustomerDashboard from "../pages/CustomerDashboard";
+import NotFoundPage from "../pages/NotFoundPage";
+import ProtectedRoute from "./ProtectedRoute";
+import { fetchUserProfile } from "../services/api";
 
 const AppRouter = () => {
-    const isAuthenticated = !!localStorage.getItem('token'); // Check if the user is logged in
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+  
+    useEffect(() => {
+        const getUserData = async () => {
+            try {
+                const { data } = await fetchUserProfile();
+                setUser(data);
+            } catch (error) {
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        getUserData();
+    }, []);
+
+    if (loading) return <div>Loading...</div>;
 
     return (
-        <Router>
-            <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
+        <Routes> {/* ✅ Removed <Router> to avoid nesting */}
+            {/* Public Routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-                {/* Protected Routes */}
-                <Route
-                    path="/dashboard"
-                    element={
-                        <ProtectedRoute isAuthenticated={isAuthenticated}>
-                            <Dashboard />
-                        </ProtectedRoute>
-                    }
-                />
+            {/* Protected Routes */}
+            <Route
+                path="/admin-dashboard"
+                element={
+                    <ProtectedRoute isAuthenticated={user?.isAdmin}>
+                        <AdminDashboard />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/customer-dashboard"
+                element={
+                    <ProtectedRoute isAuthenticated={user && !user.isAdmin}>
+                        <CustomerDashboard />
+                    </ProtectedRoute>
+                }
+            />
 
-                {/* Catch-all for undefined routes */}
-                <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-        </Router>
+            <Route path="*" element={<NotFoundPage />} />
+        </Routes>
     );
 };
 
