@@ -1,22 +1,32 @@
 import express from "express";
+import { protect, verifyAdmin } from "../middleware/authMiddleware.js";
 import {
   createQueue,
-  getAllQueues,
-  getCreatedQueues,
-  getWaitingQueues,
-  updateQueueStatus,
-  deleteQueue,
+  joinQueue,
+  completeQueue,
+  removeExpiredCustomers,
+  getCustomerQueues,
+  getAdminQueues
 } from "../controllers/queueController.js";
-import protect from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Routes
-router.post("/", protect, createQueue);              // Create a new queue
-router.get("/", protect, getAllQueues);              // Get all queues
-router.get("/created", protect, getCreatedQueues);   // Get queues created by the user
-router.get("/waiting", protect, getWaitingQueues);   // Get queues the user is waiting for
-router.put("/:id", protect, updateQueueStatus);      // Update queue status
-router.delete("/:id", protect, deleteQueue);         // Delete a queue
+// Admin-only route to create a queue
+router.post("/create", protect, verifyAdmin, createQueue);
+
+// Customer joins a queue
+router.post("/join/:queueId", protect, joinQueue);
+
+// Customer marks queue as completed
+router.post("/complete/:queueId", protect, completeQueue);
+
+// Get queues for customers
+router.get("/customer", protect, getCustomerQueues);
+
+// Get queues for admin
+router.get("/admin", protect, verifyAdmin, getAdminQueues);
+
+// Auto-remove expired customers every 15 minutes
+setInterval(removeExpiredCustomers, 15 * 60 * 1000);
 
 export default router;

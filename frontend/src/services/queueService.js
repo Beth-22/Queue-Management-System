@@ -1,46 +1,37 @@
-import API from './api';
+import API from "./api";
 
-export const loginUser = async (userData) => {
-    const { data } = await API.post("/users/login", userData);
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-    }
-    return data;
-  };
-  
+// 🔹 **Search for queues by name**
+export const searchQueues = async (query) => {
+  const { data } = await API.get(`/queues/search?name=${query}`);
+  return data;
+};
+                
+// Fetch queues created by the admin
+export const getAdminQueues = async () => {
+  const { data } = await API.get("/queues/admin");
+  return data;
+};
 
-// Create a new queue
+// Fetch queues the customer has joined
+export const getCustomerQueues = async () => {
+  const { data } = await API.get("/queues/customer");
+  return data;
+};
+
+// Create a new queue (admin only)
 export const createQueue = async (queueData) => {
-    const response = await API.post('/queues', queueData);
-    return response.data; // Contains queue details
+  const { data } = await API.post("/queues/create", queueData);
+  return data;
 };
 
-// Get all queues (with optional filters)
-export const getAllQueues = async (filters = {}) => {
-    const response = await API.get('/queues', { params: filters });
-    return response.data; // Contains list of queues
+// Join a queue
+export const joinQueue = async (queueId) => {
+  const { data } = await API.post(`/queues/join/${queueId}`);
+  return data;
 };
 
-// Update a queue's status
-export const updateQueueStatus = async (queueId, status) => {
-    const response = await API.put(`/queues/${queueId}`, { status });
-    return response.data; // Contains updated queue details
-};
-
-// Delete a queue
-export const deleteQueue = async (queueId) => {
-    const response = await API.delete(`/queues/${queueId}`);
-    return response.data; // Contains confirmation message
-};
-
-// Get queues created by the logged-in user
-export const getCreatedQueues = async () => {
-    const response = await API.get('/queues/created');
-    return response.data; // Contains list of created queues
-};
-
-// Get queues the user is waiting for
-export const getWaitingQueues = async () => {
-    const response = await API.get('/queues/waiting');
-    return response.data; // Contains list of queues the user is waiting for
+// Mark a queue as completed (leave queue)
+export const completeQueue = async (queueId) => {
+  const { data } = await API.post(`/queues/complete/${queueId}`);
+  return data;
 };

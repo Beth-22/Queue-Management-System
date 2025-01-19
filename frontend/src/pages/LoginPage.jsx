@@ -15,16 +15,16 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       const { data } = await loginUser(formData);
-      console.log("Login Response:", data); // Debugging: Log response
-      localStorage.setItem("token", data.token); // Store token
-      navigate("/dashboard");
-    } catch (err) {
-      console.error("Login Error:", err.response?.data || err.message); // Debugging: Log error
-      if (err.response && err.response.data) {
-        setError(err.response.data.message); // Backend error
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("isAdmin", data.isAdmin); // Store admin status
+
+      if (data.isAdmin) {
+        navigate("/admin-dashboard"); // Redirect admins to Admin Dashboard
       } else {
-        setError("An unexpected error occurred."); // Generic error
+        navigate("/customer-dashboard"); // Redirect customers to Customer Dashboard
       }
+    } catch (err) {
+      setError(err.response?.data?.message || "An unexpected error occurred.");
     }
   };
 
@@ -63,12 +63,6 @@ const LoginPage = () => {
             Login
           </button>
         </form>
-        <p className="mt-4 text-sm text-center">
-          Don't have an account?{" "}
-          <a href="/register" className="text-blue-500 font-medium hover:underline">
-            Register
-          </a>
-        </p>
       </div>
     </div>
   );

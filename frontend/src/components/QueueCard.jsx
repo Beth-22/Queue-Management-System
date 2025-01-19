@@ -1,28 +1,52 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+/* eslint-disable react/prop-types */
+import React from "react";
 
-const QueueCard = ({ service, status, user }) => {
-    const statusClasses = {
-        waiting: 'bg-yellow-500 text-yellow-100',
-        completed: 'bg-green-500 text-green-100',
-        cancelled: 'bg-red-500 text-red-100',
-    };
+const QueueCard = ({ queue, userRole, onJoin, onComplete, onDelete }) => {
+  return (
+    <div className="p-4 bg-white shadow rounded-lg border">
+      <h3 className="text-lg font-bold">{queue.name}</h3>
+      <p className="text-sm text-gray-600">Service: {queue.service}</p>
+      <p className="text-sm text-gray-500">Status: {queue.status}</p>
+      <p className="text-sm text-gray-500">
+        Participants: {queue.participants.length} / 60
+      </p>
 
-    return (
-        <div className="border rounded-lg p-4 shadow-lg bg-white">
-            <h3 className="text-lg font-bold text-gray-800">{service}</h3>
-            <p className={`inline-block px-3 py-1 mt-2 text-sm rounded-full ${statusClasses[status]}`}>
-                {status}
-            </p>
-            <p className="mt-4 text-sm text-gray-600">User: {user}</p>
-        </div>
-    );
-};
+      <div className="mt-4 flex space-x-2">
+        {/* Customer Actions */}
+        {userRole === "customer" && queue.status === "waiting" && (
+          <>
+            {queue.participants.length < 60 ? (
+              <button
+                onClick={() => onJoin(queue._id)}
+                className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+              >
+                Join Queue
+              </button>
+            ) : (
+              <span className="text-red-500 text-sm">Queue is full</span>
+            )}
 
-QueueCard.propTypes = {
-    service: PropTypes.string.isRequired,
-    status: PropTypes.oneOf(['waiting', 'completed', 'cancelled']).isRequired,
-    user: PropTypes.string.isRequired,
+            <button
+              onClick={() => onComplete(queue._id)}
+              className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+            >
+              Mark Complete
+            </button>
+          </>
+        )}
+
+        {/* Admin Actions */}
+        {userRole === "admin" && (
+          <button
+            onClick={() => onDelete(queue._id)}
+            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+          >
+            Delete Queue
+          </button>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default QueueCard;

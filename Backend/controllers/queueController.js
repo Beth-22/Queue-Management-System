@@ -1,115 +1,103 @@
 import Queue from "../models/Queue.js";
+import User from "../models/User.js";
 
-/**
- * Create a new queue
- */
+// Admin Creates a Queue
 export const createQueue = async (req, res) => {
-  const { name, service, status = "waiting" } = req.body;
+  const { name, service } = req.body;
 
   try {
-    // Validate required fields
-    if (!name || !service) {
-      return res.status(400).json({ error: "Name and service are required." });
-    }
-
     const queue = await Queue.create({
       name,
       service,
       creator: req.user._id,
-      status,
+      participants: []
     });
 
     res.status(201).json(queue);
   } catch (error) {
-    res.status(500).json({ error: "Failed to create queue." });
+    res.status(500).json({ message: "Failed to create queue." });
   }
 };
 
-/**
- * Get all queues
- */
-export const getAllQueues = async (req, res) => {
-  const { status, service } = req.query;
-
+// Customer Joins a Queue (Max 60 Participants)
+export const joinQueue = async (req, res) => {
   try {
-    const filter = {};
-    if (status) filter.status = status;
-    if (service) filter.service = new RegExp(service, "i"); // Case-insensitive search
+    const queue = await Queue.findById(req.params.queueId);
 
-    const queues = await Queue.find(filter).populate("creator", "name email");
+    if (!queue) {
+      return res.status(404).json({ message: "Queue not found." });
+    }
+
+    if (queue.participants.length >= 60) {
+      return res.status(400).json({ message: "Queue is full (Max 60)." });
+    }
+
+    if (queue.participants.includes(req.user._id)) {
+      return res.status(400).json({ message: "You are already in this queue." });
+    }
+
+    queue.participants.push({ user: req.user._id, joinedAt: new Date() });
+    await queue.save();
+
+    res.status(200).json({ message: "Joined queue successfully." });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to join queue." });
+  }
+};
+
+// Customer Completes a Queue
+export const completeQueue = async (req, res) => {
+  try {
+    const queue = await Queue.findById(req.params.queueId);
+    if (!queue) return res.status(404).json({ message: "Queue not found." });
+
+    queue.participants = queue.participants.filter(
+      (p) => p.user.toString() !== req.user._id.toString()
+    );
+    await queue.save();
+
+    res.status(200).json({ message: "Queue completed and removed." });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to complete queue." });
+  }
+};
+
+// Automatically Remove Expired Customers Every 15 Min
+export const removeExpiredCustomers = async () => {
+  try {
+    const now = new Date();
+    const expirationTime = new Date(now.getTime() - 15 * 60 * 1000);
+
+    const queues = await Queue.find({});
+    queues.forEach(async (queue) => {
+      queue.participants = queue.participants.filter(
+        (p) => p.joinedAt > expirationTime
+      );
+      await queue.save();
+    });
+
+    console.log("Expired customers removed.");
+  } catch (error) {
+    console.error("Failed to remove expired customers:", error);
+  }
+};
+
+// Get Queues for Customers
+export const getCustomerQueues = async (req, res) => {
+  try {
+    const queues = await Queue.find({ "participants.user": req.user._id });
     res.status(200).json(queues);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch queues." });
+    res.status(500).json({ message: "Failed to fetch queues." });
   }
 };
 
-/**
- * Get queues created by the logged-in user
- */
-export const getCreatedQueues = async (req, res) => {
+// Get Queues for Admin
+export const getAdminQueues = async (req, res) => {
   try {
     const queues = await Queue.find({ creator: req.user._id });
     res.status(200).json(queues);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch created queues." });
-  }
-};
-
-/**
- * Get queues the user is waiting for
- */
-export const getWaitingQueues = async (req, res) => {
-  try {
-    const queues = await Queue.find({ participants: req.user._id });
-    res.status(200).json(queues);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch waiting queues." });
-  }
-};
-
-/**
- * Update queue status
- */
-export const updateQueueStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-
-  try {
-    if (!status) {
-      return res.status(400).json({ error: "Status is required." });
-    }
-
-    const queue = await Queue.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
-
-    if (!queue) {
-      return res.status(404).json({ error: "Queue not found." });
-    }
-
-    res.status(200).json(queue);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to update queue status." });
-  }
-};
-
-/**
- * Delete a queue
- */
-export const deleteQueue = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const queue = await Queue.findByIdAndDelete(id);
-
-    if (!queue) {
-      return res.status(404).json({ error: "Queue not found." });
-    }
-
-    res.status(200).json({ message: "Queue deleted successfully." });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to delete queue." });
+    res.status(500).json({ message: "Failed to fetch queues." });
   }
 };
