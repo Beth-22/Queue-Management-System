@@ -1,5 +1,15 @@
 import API from "./api";
 
+
+export const getAllQueues = async () => {
+  const { data } = await API.get("/queues"); // ✅ Should match backend route
+  return data;
+};
+
+// ✅ Create a new queue (Admins only)
+export const createQueue = async (queueData) => {
+  return await API.post("/queues", queueData); // ✅ Matches backend POST route
+};
 // 🔹 **Search for queues by name**
 export const searchQueues = async (query) => {
   const { data } = await API.get(`/queues/search?name=${query}`);
@@ -18,11 +28,6 @@ export const getCustomerQueues = async () => {
   return data;
 };
 
-// Create a new queue (admin only)
-export const createQueue = async (queueData) => {
-  const { data } = await API.post("/queues/create", queueData);
-  return data;
-};
 
 // Join a queue
 export const joinQueue = async (queueId) => {

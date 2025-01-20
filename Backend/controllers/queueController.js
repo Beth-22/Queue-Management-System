@@ -1,21 +1,40 @@
 import Queue from "../models/Queue.js";
 import User from "../models/User.js";
 
-// Admin Creates a Queue
-export const createQueue = async (req, res) => {
-  const { name, service } = req.body;
-
+// ✅ Get all queues
+export const getQueues = async (req, res) => {
   try {
-    const queue = await Queue.create({
-      name,
-      service,
-      creator: req.user._id,
-      participants: []
-    });
-
-    res.status(201).json(queue);
+      const queues = await Queue.find().populate("createdBy", "name");
+      res.json(queues);
   } catch (error) {
-    res.status(500).json({ message: "Failed to create queue." });
+      res.status(500).json({ error: "Server error" });
+  }
+};
+
+// ✅ Create a new queue (Admin only)
+export const createQueue = async (req, res) => {
+  try {
+      if (!req.user || !req.user.isAdmin) {
+          return res.status(403).json({ error: "Unauthorized: Admins only." });
+      }
+
+      const { name, date, time, services } = req.body;
+      if (!name || !date || !time || !services.length) {
+          return res.status(400).json({ error: "All fields are required." });
+      }
+
+      const newQueue = new Queue({
+          name,
+          date,
+          time,
+          services,
+          createdBy: req.user._id,
+      });
+
+      await newQueue.save();
+      res.status(201).json({ message: "Queue created successfully." });
+  } catch (error) {
+      res.status(500).json({ error: "Server error" });
   }
 };
 

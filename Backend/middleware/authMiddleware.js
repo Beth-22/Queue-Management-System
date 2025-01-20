@@ -1,44 +1,29 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
-import dotenv from "dotenv";
 
-dotenv.config();
-
-// Protect Middleware - Ensures User is Authenticated
+// ✅ Protect Route (Ensures User is Logged In)
 export const protect = async (req, res, next) => {
-  let token;
+    let token = req.headers.authorization?.split(" ")[1];
 
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-    try {
-      // Extract token from header
-      token = req.headers.authorization.split(" ")[1];
-
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      // Attach user to request object
-      req.user = await User.findById(decoded.id).select("-password");
-
-      next(); // Continue to next middleware
-    } catch (error) {
-      res.status(401).json({ message: "Not authorized, token failed" });
+    if (!token) {
+        return res.status(401).json({ error: "Unauthorized: No token." });
     }
-  }
 
-  if (!token) {
-    res.status(401).json({ message: "Not authorized, no token" });
-  }
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = await User.findById(decoded.id).select("-password");
+        next();
+    } catch (error) {
+        res.status(401).json({ error: "Unauthorized: Invalid token." });
+    }
 };
 
-// Verify Admin Middleware - Checks Admin Code
+// ✅ Verify Admin Access
 export const verifyAdmin = (req, res, next) => {
-  const { AdminCode } = req.body;
-
-  if (AdminCode !== process.env.ADMIN_SECRET) {
-    return res.status(403).json({ message: "Unauthorized. Invalid Admin Code." });
-  }
-
-  next();
+    if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ error: "Unauthorized: Admins only." });
+    }
+    next();
 };
 
 export default protect;
